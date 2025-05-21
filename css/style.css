@@ -1,0 +1,17 @@
+/* Custom styles */
+body {
+    font-family: 'Arial', sans-serif;
+    padding-top: 60px;
+}
+
+section {
+    padding: 60px 0;
+}
+
+.project-card {
+    transition: transform 0.3s;
+}
+
+.project-card:hover {
+    transform: translateY(-5px);
+}
