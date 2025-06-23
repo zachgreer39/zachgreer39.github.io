@@ -421,15 +421,15 @@ WHERE final_event IS NOT NULL
 LIMIT 15;</code>
                     </div>
                     
-                    <div class="query-example" onclick="setQuery(`-- Most common at-bat results
+                    <div class="query-example" onclick="setQuery(`-- At-bat outcome frequencies
 SELECT final_event, COUNT(*) as occurrences,
        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM tbl_atbats WHERE final_event IS NOT NULL), 2) as percentage
 FROM tbl_atbats 
 WHERE final_event IS NOT NULL
 GROUP BY final_event 
 ORDER BY occurrences DESC;`)">
-                        <h5>At-Bat Outcomes</h5>
-                        <code>-- Most common at-bat results
+                        <h5>At-Bat Outcome Frequencies</h5>
+                        <code>-- At-bat outcome frequencies
 SELECT final_event, COUNT(*) as occurrences,
        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM tbl_atbats WHERE final_event IS NOT NULL), 2) as percentage
 FROM tbl_atbats 
@@ -442,15 +442,15 @@ ORDER BY occurrences DESC;</code>
                 <div class="query-category">
                     <h4>Pitch Analysis</h4>
                     
-                    <div class="query-example" onclick="setQuery(`-- Most common pitch types
+                    <div class="query-example" onclick="setQuery(`-- Pitch types with velocities
 SELECT pitch_type, COUNT(*) as pitch_count,
        ROUND(AVG(release_speed), 1) as avg_speed
 FROM tbl_pitchinfo 
 WHERE pitch_type IS NOT NULL
 GROUP BY pitch_type 
 ORDER BY pitch_count DESC;`)">
-                        <h5>Pitch Types Analysis</h5>
-                        <code>-- Most common pitch types
+                        <h5>Pitch Types with Velocities</h5>
+                        <code>-- Pitch types with velocities
 SELECT pitch_type, COUNT(*) as pitch_count,
        ROUND(AVG(release_speed), 1) as avg_speed
 FROM tbl_pitchinfo 
@@ -459,163 +459,130 @@ GROUP BY pitch_type
 ORDER BY pitch_count DESC;</code>
                     </div>
                     
-                    <div class="query-example" onclick="setQuery(`-- Pitch outcomes by count
+                    <div class="query-example" onclick="setQuery(`-- Count situation analysis for batter 605141 vs pitcher 608566
 SELECT balls, strikes, description, COUNT(*) as frequency
 FROM tbl_pitchinfo 
 WHERE description IS NOT NULL
+  AND batter = 605141 
+  AND pitcher = 608566
 GROUP BY balls, strikes, description
 ORDER BY balls, strikes, frequency DESC;`)">
-                        <h5>Count Situations</h5>
-                        <code>-- Pitch outcomes by count
+                        <h5>Count Situation Analysis</h5>
+                        <code>-- Count situation analysis for batter 605141 vs pitcher 608566
 SELECT balls, strikes, description, COUNT(*) as frequency
 FROM tbl_pitchinfo 
 WHERE description IS NOT NULL
+  AND batter = 605141 
+  AND pitcher = 608566
 GROUP BY balls, strikes, description
 ORDER BY balls, strikes, frequency DESC;</code>
                     </div>
                 </div>
                 
                 <div class="query-category">
-                    <h4>Advanced Analysis</h4>
-                    
-                    <div class="query-example" onclick="setQuery(`-- First pitch type for each at-bat outcome
-SELECT ab.final_event, p.pitch_type, COUNT(*) as count
-FROM tbl_atbats ab
-JOIN tbl_pitchinfo p ON ab.game_pk = p.game_pk 
-    AND ab.at_bat_number = p.at_bat_number
-WHERE ab.final_event IS NOT NULL 
-    AND p.pitch_number = 1
-    AND p.pitch_type IS NOT NULL
-GROUP BY ab.final_event, p.pitch_type
-ORDER BY ab.final_event, count DESC;`)">
-                        <h5>Join Analysis</h5>
-                        <code>-- First pitch type for each at-bat outcome
-SELECT ab.final_event, p.pitch_type, COUNT(*) as count
-FROM tbl_atbats ab
-JOIN tbl_pitchinfo p ON ab.game_pk = p.game_pk 
-    AND ab.at_bat_number = p.at_bat_number
-WHERE ab.final_event IS NOT NULL 
-    AND p.pitch_number = 1
-    AND p.pitch_type IS NOT NULL
-GROUP BY ab.final_event, p.pitch_type
-ORDER BY ab.final_event, count DESC;</code>
-                    </div>
-                    
-                    <div class="query-example" onclick="setQuery(`-- Home runs by team
-SELECT home_team, COUNT(*) as home_runs
-FROM tbl_atbats 
-WHERE final_event = 'home_run'
-GROUP BY home_team
-ORDER BY home_runs DESC
-LIMIT 10;`)">
-                        <h5>Team Statistics</h5>
-                        <code>-- Home runs by team
-SELECT home_team, COUNT(*) as home_runs
-FROM tbl_atbats 
-WHERE final_event = 'home_run'
-GROUP BY home_team
-ORDER BY home_runs DESC
-LIMIT 10;</code>
-                    </div>
-                </div>
-                
-                <div class="query-category">
                     <h4>🔄 Recursive Queries</h4>
                     
-                    <div class="query-example" onclick="setQuery(`-- Generate a sequence of pitch counts (0-0 to 3-2)
-WITH RECURSIVE pitch_counts AS (
-  -- Base case: start with 0-0 count
-  SELECT 0 as balls, 0 as strikes
-  
-  UNION ALL
-  
-  -- Recursive case: increment balls or strikes
+                    <div class="query-example" onclick="setQuery(\`-- Running slash line for batter 605141 vs pitcher 608566
+WITH RECURSIVE matchup_progression AS (
+  -- Base case: first confrontation
   SELECT 
-    CASE 
-      WHEN balls < 3 THEN balls + 1 
-      ELSE balls 
-    END as balls,
-    CASE 
-      WHEN strikes < 2 THEN strikes + 1 
-      ELSE strikes 
-    END as strikes
-  FROM pitch_counts
-  WHERE balls < 3 OR strikes < 2
-)
-SELECT DISTINCT balls, strikes, 
-       balls || '-' || strikes as count_display
-FROM pitch_counts
-ORDER BY balls, strikes;`)">
-                        <h5>Count Generation</h5>
-                        <code>-- Generate all possible ball-strike counts recursively
-WITH RECURSIVE pitch_counts AS (
-  -- Base case: start with 0-0 count
-  SELECT 0 as balls, 0 as strikes
+    batter, pitcher, game_pk, at_bat_number,
+    1 as confrontation_num,
+    1 as total_abs,
+    CASE WHEN final_event IN ('single', 'double', 'triple', 'home_run') THEN 1 ELSE 0 END as total_hits,
+    CASE WHEN final_event IN ('single', 'double', 'triple', 'home_run', 'walk', 'hit_by_pitch') THEN 1 ELSE 0 END as total_times_on_base,
+    CASE WHEN final_event = 'single' THEN 1 ELSE 0 END +
+    CASE WHEN final_event = 'double' THEN 2 ELSE 0 END +
+    CASE WHEN final_event = 'triple' THEN 3 ELSE 0 END +
+    CASE WHEN final_event = 'home_run' THEN 4 ELSE 0 END as total_bases,
+    final_event
+  FROM tbl_atbats
+  WHERE batter = 605141 AND pitcher = 608566
+    AND batter IS NOT NULL AND pitcher IS NOT NULL
+  ORDER BY game_pk, at_bat_number
+  LIMIT 1
   
   UNION ALL
   
-  -- Recursive case: increment balls or strikes
+  -- Recursive case: add each subsequent confrontation
   SELECT 
-    CASE 
-      WHEN balls < 3 THEN balls + 1 
-      ELSE balls 
-    END as balls,
-    CASE 
-      WHEN strikes < 2 THEN strikes + 1 
-      ELSE strikes 
-    END as strikes
-  FROM pitch_counts
-  WHERE balls < 3 OR strikes < 2
+    ab.batter, ab.pitcher, ab.game_pk, ab.at_bat_number,
+    mp.confrontation_num + 1,
+    mp.total_abs + 1,
+    mp.total_hits + CASE WHEN ab.final_event IN ('single', 'double', 'triple', 'home_run') THEN 1 ELSE 0 END,
+    mp.total_times_on_base + CASE WHEN ab.final_event IN ('single', 'double', 'triple', 'home_run', 'walk', 'hit_by_pitch') THEN 1 ELSE 0 END,
+    mp.total_bases + 
+      CASE WHEN ab.final_event = 'single' THEN 1 ELSE 0 END +
+      CASE WHEN ab.final_event = 'double' THEN 2 ELSE 0 END +
+      CASE WHEN ab.final_event = 'triple' THEN 3 ELSE 0 END +
+      CASE WHEN ab.final_event = 'home_run' THEN 4 ELSE 0 END,
+    ab.final_event
+  FROM tbl_atbats ab
+  JOIN matchup_progression mp ON ab.batter = mp.batter AND ab.pitcher = mp.pitcher
+  WHERE (ab.game_pk > mp.game_pk OR (ab.game_pk = mp.game_pk AND ab.at_bat_number > mp.at_bat_number))
+    AND mp.confrontation_num < 20
+  ORDER BY ab.game_pk, ab.at_bat_number
+  LIMIT 1
 )
-SELECT DISTINCT balls, strikes, 
-       balls || '-' || strikes as count_display
-FROM pitch_counts
-ORDER BY balls, strikes;</code>
-                    </div>
-                    
-                    <div class="query-example" onclick="setQuery(`-- Track pitcher performance across games
-WITH RECURSIVE pitcher_games AS (
-  -- Base case: each pitcher's first game
-  SELECT pitcher, MIN(game_pk) as game_pk, 1 as game_number
+SELECT 
+  batter, pitcher, confrontation_num, final_event,
+  total_abs, total_hits, total_times_on_base, total_bases,
+  ROUND(CAST(total_hits AS FLOAT) / total_abs, 3) as running_avg,
+  ROUND(CAST(total_times_on_base AS FLOAT) / total_abs, 3) as running_obp,
+  ROUND(CAST(total_bases AS FLOAT) / total_abs, 3) as running_slg
+FROM matchup_progression
+ORDER BY confrontation_num;\`)">
+                        <h5>Running Slash Line</h5>
+                        <code>-- Running slash line for batter 605141 vs pitcher 608566
+WITH RECURSIVE matchup_progression AS (
+  -- Base case: first confrontation
+  SELECT 
+    batter, pitcher, game_pk, at_bat_number,
+    1 as confrontation_num,
+    1 as total_abs,
+    CASE WHEN final_event IN ('single', 'double', 'triple', 'home_run') THEN 1 ELSE 0 END as total_hits,
+    CASE WHEN final_event IN ('single', 'double', 'triple', 'home_run', 'walk', 'hit_by_pitch') THEN 1 ELSE 0 END as total_times_on_base,
+    CASE WHEN final_event = 'single' THEN 1 ELSE 0 END +
+    CASE WHEN final_event = 'double' THEN 2 ELSE 0 END +
+    CASE WHEN final_event = 'triple' THEN 3 ELSE 0 END +
+    CASE WHEN final_event = 'home_run' THEN 4 ELSE 0 END as total_bases,
+    final_event
   FROM tbl_atbats
-  GROUP BY pitcher
+  WHERE batter = 605141 AND pitcher = 608566
+    AND batter IS NOT NULL AND pitcher IS NOT NULL
+  ORDER BY game_pk, at_bat_number
+  LIMIT 1
   
   UNION ALL
   
-  -- Recursive case: next games for each pitcher
-  SELECT ab.pitcher, ab.game_pk, pg.game_number + 1
+  -- Recursive case: add each subsequent confrontation
+  SELECT 
+    ab.batter, ab.pitcher, ab.game_pk, ab.at_bat_number,
+    mp.confrontation_num + 1,
+    mp.total_abs + 1,
+    mp.total_hits + CASE WHEN ab.final_event IN ('single', 'double', 'triple', 'home_run') THEN 1 ELSE 0 END,
+    mp.total_times_on_base + CASE WHEN ab.final_event IN ('single', 'double', 'triple', 'home_run', 'walk', 'hit_by_pitch') THEN 1 ELSE 0 END,
+    mp.total_bases + 
+      CASE WHEN ab.final_event = 'single' THEN 1 ELSE 0 END +
+      CASE WHEN ab.final_event = 'double' THEN 2 ELSE 0 END +
+      CASE WHEN ab.final_event = 'triple' THEN 3 ELSE 0 END +
+      CASE WHEN ab.final_event = 'home_run' THEN 4 ELSE 0 END,
+    ab.final_event
   FROM tbl_atbats ab
-  JOIN pitcher_games pg ON ab.pitcher = pg.pitcher
-  WHERE ab.game_pk > pg.game_pk
-    AND pg.game_number < 5
-  GROUP BY ab.pitcher, ab.game_pk, pg.game_number
+  JOIN matchup_progression mp ON ab.batter = mp.batter AND ab.pitcher = mp.pitcher
+  WHERE (ab.game_pk > mp.game_pk OR (ab.game_pk = mp.game_pk AND ab.at_bat_number > mp.at_bat_number))
+    AND mp.confrontation_num < 20
+  ORDER BY ab.game_pk, ab.at_bat_number
+  LIMIT 1
 )
-SELECT pitcher, game_number, COUNT(*) as total_games
-FROM pitcher_games
-GROUP BY pitcher, game_number
-ORDER BY pitcher, game_number;`)">
-                        <h5>Pitcher Game Progression</h5>
-                        <code>-- Track pitcher performance across games
-WITH RECURSIVE pitcher_games AS (
-  -- Base case: each pitcher's first game
-  SELECT pitcher, MIN(game_pk) as game_pk, 1 as game_number
-  FROM tbl_atbats
-  GROUP BY pitcher
-  
-  UNION ALL
-  
-  -- Recursive case: next games for each pitcher
-  SELECT ab.pitcher, ab.game_pk, pg.game_number + 1
-  FROM tbl_atbats ab
-  JOIN pitcher_games pg ON ab.pitcher = pg.pitcher
-  WHERE ab.game_pk > pg.game_pk
-    AND pg.game_number < 5
-  GROUP BY ab.pitcher, ab.game_pk, pg.game_number
-)
-SELECT pitcher, game_number, COUNT(*) as total_games
-FROM pitcher_games
-GROUP BY pitcher, game_number
-ORDER BY pitcher, game_number;</code>
+SELECT 
+  batter, pitcher, confrontation_num, final_event,
+  total_abs, total_hits, total_times_on_base, total_bases,
+  ROUND(CAST(total_hits AS FLOAT) / total_abs, 3) as running_avg,
+  ROUND(CAST(total_times_on_base AS FLOAT) / total_abs, 3) as running_obp,
+  ROUND(CAST(total_bases AS FLOAT) / total_abs, 3) as running_slg
+FROM matchup_progression
+ORDER BY confrontation_num;</code>
                     </div>
                 </div>
             </div>
