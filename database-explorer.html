@@ -484,52 +484,49 @@ ORDER BY balls, strikes, frequency DESC;</code>
                     
                     <div class="query-example" onclick="setQuery(\`-- Running slash line for batter 605141 vs pitcher 608566
 WITH RECURSIVE matchup_progression AS (
-  -- Base case: first confrontation
-  SELECT 
-    batter, pitcher, game_pk, at_bat_number,
-    1 as confrontation_num,
-    1 as total_abs,
-    CASE WHEN final_event IN ('single', 'double', 'triple', 'home_run') THEN 1 ELSE 0 END as total_hits,
-    CASE WHEN final_event IN ('single', 'double', 'triple', 'home_run', 'walk', 'hit_by_pitch') THEN 1 ELSE 0 END as total_times_on_base,
-    CASE WHEN final_event = 'single' THEN 1 ELSE 0 END +
-    CASE WHEN final_event = 'double' THEN 2 ELSE 0 END +
-    CASE WHEN final_event = 'triple' THEN 3 ELSE 0 END +
-    CASE WHEN final_event = 'home_run' THEN 4 ELSE 0 END as total_bases,
-    final_event
-  FROM tbl_atbats
-  WHERE batter = 605141 AND pitcher = 608566
-    AND batter IS NOT NULL AND pitcher IS NOT NULL
-  ORDER BY game_pk, at_bat_number
-  LIMIT 1
-  
-  UNION ALL
-  
-  -- Recursive case: add each subsequent confrontation
-  SELECT 
-    ab.batter, ab.pitcher, ab.game_pk, ab.at_bat_number,
-    mp.confrontation_num + 1,
-    mp.total_abs + 1,
-    mp.total_hits + CASE WHEN ab.final_event IN ('single', 'double', 'triple', 'home_run') THEN 1 ELSE 0 END,
-    mp.total_times_on_base + CASE WHEN ab.final_event IN ('single', 'double', 'triple', 'home_run', 'walk', 'hit_by_pitch') THEN 1 ELSE 0 END,
-    mp.total_bases + 
-      CASE WHEN ab.final_event = 'single' THEN 1 ELSE 0 END +
-      CASE WHEN ab.final_event = 'double' THEN 2 ELSE 0 END +
-      CASE WHEN ab.final_event = 'triple' THEN 3 ELSE 0 END +
-      CASE WHEN ab.final_event = 'home_run' THEN 4 ELSE 0 END,
-    ab.final_event
-  FROM tbl_atbats ab
-  JOIN matchup_progression mp ON ab.batter = mp.batter AND ab.pitcher = mp.pitcher
-  WHERE (ab.game_pk > mp.game_pk OR (ab.game_pk = mp.game_pk AND ab.at_bat_number > mp.at_bat_number))
-    AND mp.confrontation_num < 20
-  ORDER BY ab.game_pk, ab.at_bat_number
-  LIMIT 1
+ -- Base case: first confrontation
+ SELECT 
+   batter, pitcher, game_pk, at_bat_number,
+   1 as confrontation_num,
+   1 as total_abs,
+   CASE WHEN final_event IN ('single', 'double', 'triple', 'home_run') THEN 1 ELSE 0 END as total_hits,
+   CASE WHEN final_event IN ('single', 'double', 'triple', 'home_run', 'walk', 'hit_by_pitch') THEN 1 ELSE 0 END as total_times_on_base,
+   CASE WHEN final_event = 'single' THEN 1 ELSE 0 END +
+   CASE WHEN final_event = 'double' THEN 2 ELSE 0 END +
+   CASE WHEN final_event = 'triple' THEN 3 ELSE 0 END +
+   CASE WHEN final_event = 'home_run' THEN 4 ELSE 0 END as total_bases,
+   final_event
+ FROM tbl_atbats
+ WHERE batter = 605141 AND pitcher = 608566
+   AND batter IS NOT NULL AND pitcher IS NOT NULL
+ LIMIT 1
+ 
+ UNION ALL
+ 
+ -- Recursive case: add each subsequent confrontation
+ SELECT 
+   ab.batter, ab.pitcher, ab.game_pk, ab.at_bat_number,
+   mp.confrontation_num + 1,
+   mp.total_abs + 1,
+   mp.total_hits + CASE WHEN ab.final_event IN ('single', 'double', 'triple', 'home_run') THEN 1 ELSE 0 END,
+   mp.total_times_on_base + CASE WHEN ab.final_event IN ('single', 'double', 'triple', 'home_run', 'walk', 'hit_by_pitch') THEN 1 ELSE 0 END,
+   mp.total_bases + 
+     CASE WHEN ab.final_event = 'single' THEN 1 ELSE 0 END +
+     CASE WHEN ab.final_event = 'double' THEN 2 ELSE 0 END +
+     CASE WHEN ab.final_event = 'triple' THEN 3 ELSE 0 END +
+     CASE WHEN ab.final_event = 'home_run' THEN 4 ELSE 0 END,
+   ab.final_event
+ FROM tbl_atbats ab
+ JOIN matchup_progression mp ON ab.batter = mp.batter AND ab.pitcher = mp.pitcher
+ WHERE (ab.game_pk > mp.game_pk OR (ab.game_pk = mp.game_pk AND ab.at_bat_number > mp.at_bat_number))
+   AND mp.confrontation_num < 20
 )
 SELECT 
-  batter, pitcher, confrontation_num, final_event,
-  total_abs, total_hits, total_times_on_base, total_bases,
-  ROUND(CAST(total_hits AS FLOAT) / total_abs, 3) as running_avg,
-  ROUND(CAST(total_times_on_base AS FLOAT) / total_abs, 3) as running_obp,
-  ROUND(CAST(total_bases AS FLOAT) / total_abs, 3) as running_slg
+ batter, pitcher, confrontation_num, final_event,
+ total_abs, total_hits, total_times_on_base, total_bases,
+ ROUND(CAST(total_hits AS FLOAT) / total_abs, 3) as running_avg,
+ ROUND(CAST(total_times_on_base AS FLOAT) / total_abs, 3) as running_obp,
+ ROUND(CAST(total_bases AS FLOAT) / total_abs, 3) as running_slg
 FROM matchup_progression
 ORDER BY confrontation_num;\`)">
                         <h5>Running Slash Line</h5>
