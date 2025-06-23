@@ -353,10 +353,6 @@
                     <p id="pitches-count">-</p>
                 </div>
                 <div class="info-card">
-                    <h4>Games</h4>
-                    <p id="games-count">-</p>
-                </div>
-                <div class="info-card">
                     <h4>Batters</h4>
                     <p id="batters-count">-</p>
                 </div>
@@ -395,17 +391,12 @@
                 <div class="table-doc">
                     <h4>tbl_atbats</h4>
                     <p>Individual at-bat records with outcomes, player IDs, and game context</p>
-                    <div class="key-columns">Key columns: game_pk, batter, pitcher, events, description</div>
+                    <div class="key-columns">Key columns: game_pk, batter, pitcher, final_event, outs_when_up</div>
                 </div>
                 <div class="table-doc">
                     <h4>tbl_pitchinfo</h4>
                     <p>Pitch-by-pitch data including velocity, location, and type</p>
                     <div class="key-columns">Key columns: game_pk, at_bat_number, pitch_number, pitch_type, release_speed</div>
-                </div>
-                <div class="table-doc">
-                    <h4>tbl_games</h4>
-                    <p>Game-level information including teams, dates, and ballpark details</p>
-                    <div class="key-columns">Key columns: game_pk, game_date, home_team, away_team, venue_name</div>
                 </div>
             </div>
         </div>
@@ -422,7 +413,12 @@ SELECT game_pk, inning, inning_topbot, final_event, batter, pitcher
 FROM tbl_atbats 
 WHERE final_event IS NOT NULL 
 LIMIT 15;`)">
-                        <strong>Sample At-Bats:</strong> View basic at-bat data with outcomes
+                        <h5>Sample At-Bats</h5>
+                        <code>-- View sample at-bats with outcomes
+SELECT game_pk, inning, inning_topbot, final_event, batter, pitcher 
+FROM tbl_atbats 
+WHERE final_event IS NOT NULL 
+LIMIT 15;</code>
                     </div>
                     
                     <div class="query-example" onclick="setQuery(`-- Most common at-bat results
@@ -432,7 +428,14 @@ FROM tbl_atbats
 WHERE final_event IS NOT NULL
 GROUP BY final_event 
 ORDER BY occurrences DESC;`)">
-                        <strong>At-Bat Outcomes:</strong> Most common results and their frequencies
+                        <h5>At-Bat Outcomes</h5>
+                        <code>-- Most common at-bat results
+SELECT final_event, COUNT(*) as occurrences,
+       ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM tbl_atbats WHERE final_event IS NOT NULL), 2) as percentage
+FROM tbl_atbats 
+WHERE final_event IS NOT NULL
+GROUP BY final_event 
+ORDER BY occurrences DESC;</code>
                     </div>
                 </div>
                 
@@ -446,7 +449,14 @@ FROM tbl_pitchinfo
 WHERE pitch_type IS NOT NULL
 GROUP BY pitch_type 
 ORDER BY pitch_count DESC;`)">
-                        <strong>Pitch Types:</strong> Analysis of pitch types and velocities
+                        <h5>Pitch Types Analysis</h5>
+                        <code>-- Most common pitch types
+SELECT pitch_type, COUNT(*) as pitch_count,
+       ROUND(AVG(release_speed), 1) as avg_speed
+FROM tbl_pitchinfo 
+WHERE pitch_type IS NOT NULL
+GROUP BY pitch_type 
+ORDER BY pitch_count DESC;</code>
                     </div>
                     
                     <div class="query-example" onclick="setQuery(`-- Pitch outcomes by count
@@ -455,7 +465,13 @@ FROM tbl_pitchinfo
 WHERE description IS NOT NULL
 GROUP BY balls, strikes, description
 ORDER BY balls, strikes, frequency DESC;`)">
-                        <strong>Count Situations:</strong> Pitch outcomes by ball-strike count
+                        <h5>Count Situations</h5>
+                        <code>-- Pitch outcomes by count
+SELECT balls, strikes, description, COUNT(*) as frequency
+FROM tbl_pitchinfo 
+WHERE description IS NOT NULL
+GROUP BY balls, strikes, description
+ORDER BY balls, strikes, frequency DESC;</code>
                     </div>
                 </div>
                 
@@ -472,29 +488,34 @@ WHERE ab.final_event IS NOT NULL
     AND p.pitch_type IS NOT NULL
 GROUP BY ab.final_event, p.pitch_type
 ORDER BY ab.final_event, count DESC;`)">
-                        <strong>Join Analysis:</strong> First pitch type leading to different outcomes
+                        <h5>Join Analysis</h5>
+                        <code>-- First pitch type for each at-bat outcome
+SELECT ab.final_event, p.pitch_type, COUNT(*) as count
+FROM tbl_atbats ab
+JOIN tbl_pitchinfo p ON ab.game_pk = p.game_pk 
+    AND ab.at_bat_number = p.at_bat_number
+WHERE ab.final_event IS NOT NULL 
+    AND p.pitch_number = 1
+    AND p.pitch_type IS NOT NULL
+GROUP BY ab.final_event, p.pitch_type
+ORDER BY ab.final_event, count DESC;</code>
                     </div>
                     
-                    <div class="query-example" onclick="setQuery(`-- Home runs by month
-SELECT 
-    CASE 
-        WHEN SUBSTR(game_date, 6, 2) = '03' THEN 'March'
-        WHEN SUBSTR(game_date, 6, 2) = '04' THEN 'April'
-        WHEN SUBSTR(game_date, 6, 2) = '05' THEN 'May'
-        WHEN SUBSTR(game_date, 6, 2) = '06' THEN 'June'
-        WHEN SUBSTR(game_date, 6, 2) = '07' THEN 'July'
-        WHEN SUBSTR(game_date, 6, 2) = '08' THEN 'August'
-        WHEN SUBSTR(game_date, 6, 2) = '09' THEN 'September'
-        WHEN SUBSTR(game_date, 6, 2) = '10' THEN 'October'
-        ELSE 'Other'
-    END as month,
-    COUNT(*) as home_runs
-FROM tbl_atbats ab
-JOIN tbl_games g ON ab.game_pk = g.game_pk
-WHERE ab.final_event = 'home_run'
-GROUP BY month
-ORDER BY home_runs DESC;`)">
-                        <strong>Seasonal Trends:</strong> Home runs by month with date parsing
+                    <div class="query-example" onclick="setQuery(`-- Home runs by team
+SELECT home_team, COUNT(*) as home_runs
+FROM tbl_atbats 
+WHERE final_event = 'home_run'
+GROUP BY home_team
+ORDER BY home_runs DESC
+LIMIT 10;`)">
+                        <h5>Team Statistics</h5>
+                        <code>-- Home runs by team
+SELECT home_team, COUNT(*) as home_runs
+FROM tbl_atbats 
+WHERE final_event = 'home_run'
+GROUP BY home_team
+ORDER BY home_runs DESC
+LIMIT 10;</code>
                     </div>
                 </div>
                 
@@ -525,38 +546,76 @@ SELECT DISTINCT balls, strikes,
        balls || '-' || strikes as count_display
 FROM pitch_counts
 ORDER BY balls, strikes;`)">
-                        <strong>Count Generation:</strong> Generate all possible ball-strike counts recursively
-                    </div>
-                    
-                    <div class="query-example" onclick="setQuery(`-- Recursive inning progression analysis
-WITH RECURSIVE inning_progression AS (
-  -- Base case: find games and their first inning
-  SELECT DISTINCT game_pk, 1 as inning, 'T' as half_inning
-  FROM tbl_atbats
-  WHERE inning = 1
+                        <h5>Count Generation</h5>
+                        <code>-- Generate all possible ball-strike counts recursively
+WITH RECURSIVE pitch_counts AS (
+  -- Base case: start with 0-0 count
+  SELECT 0 as balls, 0 as strikes
   
   UNION ALL
   
-  -- Recursive case: progress through innings
+  -- Recursive case: increment balls or strikes
   SELECT 
-    ip.game_pk,
     CASE 
-      WHEN ip.half_inning = 'T' THEN ip.inning
-      ELSE ip.inning + 1
-    END as inning,
+      WHEN balls < 3 THEN balls + 1 
+      ELSE balls 
+    END as balls,
     CASE 
-      WHEN ip.half_inning = 'T' THEN 'B'
-      ELSE 'T'
-    END as half_inning
-  FROM inning_progression ip
-  WHERE ip.inning < 9
+      WHEN strikes < 2 THEN strikes + 1 
+      ELSE strikes 
+    END as strikes
+  FROM pitch_counts
+  WHERE balls < 3 OR strikes < 2
 )
-SELECT game_pk, inning, half_inning,
-       inning || CASE WHEN half_inning = 'T' THEN ' Top' ELSE ' Bottom' END as inning_display
-FROM inning_progression
-WHERE game_pk = (SELECT MIN(game_pk) FROM tbl_atbats)
-ORDER BY inning, half_inning;`)">
-                        <strong>Inning Progression:</strong> Track game progression through innings recursively
+SELECT DISTINCT balls, strikes, 
+       balls || '-' || strikes as count_display
+FROM pitch_counts
+ORDER BY balls, strikes;</code>
+                    </div>
+                    
+                    <div class="query-example" onclick="setQuery(`-- Track pitcher performance across games
+WITH RECURSIVE pitcher_games AS (
+  -- Base case: each pitcher's first game
+  SELECT pitcher, MIN(game_pk) as game_pk, 1 as game_number
+  FROM tbl_atbats
+  GROUP BY pitcher
+  
+  UNION ALL
+  
+  -- Recursive case: next games for each pitcher
+  SELECT ab.pitcher, ab.game_pk, pg.game_number + 1
+  FROM tbl_atbats ab
+  JOIN pitcher_games pg ON ab.pitcher = pg.pitcher
+  WHERE ab.game_pk > pg.game_pk
+    AND pg.game_number < 5
+  GROUP BY ab.pitcher, ab.game_pk, pg.game_number
+)
+SELECT pitcher, game_number, COUNT(*) as total_games
+FROM pitcher_games
+GROUP BY pitcher, game_number
+ORDER BY pitcher, game_number;`)">
+                        <h5>Pitcher Game Progression</h5>
+                        <code>-- Track pitcher performance across games
+WITH RECURSIVE pitcher_games AS (
+  -- Base case: each pitcher's first game
+  SELECT pitcher, MIN(game_pk) as game_pk, 1 as game_number
+  FROM tbl_atbats
+  GROUP BY pitcher
+  
+  UNION ALL
+  
+  -- Recursive case: next games for each pitcher
+  SELECT ab.pitcher, ab.game_pk, pg.game_number + 1
+  FROM tbl_atbats ab
+  JOIN pitcher_games pg ON ab.pitcher = pg.pitcher
+  WHERE ab.game_pk > pg.game_pk
+    AND pg.game_number < 5
+  GROUP BY ab.pitcher, ab.game_pk, pg.game_number
+)
+SELECT pitcher, game_number, COUNT(*) as total_games
+FROM pitcher_games
+GROUP BY pitcher, game_number
+ORDER BY pitcher, game_number;</code>
                     </div>
                 </div>
             </div>
@@ -615,7 +674,6 @@ ORDER BY inning, half_inning;`)">
             try {
                 const atbatsResult = db.exec("SELECT COUNT(*) as count FROM tbl_atbats");
                 const pitchesResult = db.exec("SELECT COUNT(*) as count FROM tbl_pitchinfo");
-                const gamesResult = db.exec("SELECT COUNT(DISTINCT game_pk) as count FROM tbl_atbats");
                 const battersResult = db.exec("SELECT COUNT(DISTINCT batter) as count FROM tbl_atbats WHERE batter IS NOT NULL");
                 const pitchersResult = db.exec("SELECT COUNT(DISTINCT pitcher) as count FROM tbl_atbats WHERE pitcher IS NOT NULL");
                 
@@ -623,8 +681,6 @@ ORDER BY inning, half_inning;`)">
                     atbatsResult[0]?.values[0][0].toLocaleString() || '0';
                 document.getElementById('pitches-count').textContent = 
                     pitchesResult[0]?.values[0][0].toLocaleString() || '0';
-                document.getElementById('games-count').textContent = 
-                    gamesResult[0]?.values[0][0].toLocaleString() || '0';
                 document.getElementById('batters-count').textContent = 
                     battersResult[0]?.values[0][0].toLocaleString() || '0';
                 document.getElementById('pitchers-count').textContent = 
