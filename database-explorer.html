@@ -201,6 +201,13 @@
             border-radius: 5px;
             margin-bottom: 1rem;
             border-left: 4px solid #667eea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .query-example:hover {
+            background-color: #f0f8ff;
+            transform: translateX(5px);
         }
         
         .query-example h5 {
@@ -221,7 +228,7 @@
         
         .database-info {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 1rem;
             margin-bottom: 2rem;
         }
@@ -242,6 +249,62 @@
             font-size: 1.5rem;
             font-weight: bold;
             color: #333;
+        }
+        
+        .documentation-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+        
+        .documentation-section h3 {
+            margin: 0 0 15px 0;
+            color: white;
+            font-size: 1.1em;
+        }
+        
+        .table-docs {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .table-doc {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            border-left: 3px solid #60a5fa;
+        }
+        
+        .table-doc h4 {
+            margin: 0 0 8px 0;
+            color: #60a5fa;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+        }
+        
+        .table-doc p {
+            margin: 0 0 8px 0;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .key-columns {
+            font-size: 0.8em;
+            color: rgba(255, 255, 255, 0.6);
+            font-family: 'Courier New', monospace;
+        }
+        
+        .query-category {
+            margin-bottom: 1.5rem;
+        }
+        
+        .query-category h4 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
         }
         
         .hidden {
@@ -294,8 +357,12 @@
                     <p id="games-count">-</p>
                 </div>
                 <div class="info-card">
-                    <h4>Players</h4>
-                    <p id="players-count">-</p>
+                    <h4>Batters</h4>
+                    <p id="batters-count">-</p>
+                </div>
+                <div class="info-card">
+                    <h4>Pitchers</h4>
+                    <p id="pitchers-count">-</p>
                 </div>
             </div>
             
@@ -318,54 +385,84 @@
                     <h3>Query Results</h3>
                     <div id="results-container"></div>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Table Documentation -->
+        <div class="documentation-section">
+            <h3>📊 Table Documentation</h3>
+            <div class="table-docs">
+                <div class="table-doc">
+                    <h4>tbl_atbats</h4>
+                    <p>Individual at-bat records with outcomes, player IDs, and game context</p>
+                    <div class="key-columns">Key columns: game_pk, batter, pitcher, events, description</div>
+                </div>
+                <div class="table-doc">
+                    <h4>tbl_pitchinfo</h4>
+                    <p>Pitch-by-pitch data including velocity, location, and type</p>
+                    <div class="key-columns">Key columns: game_pk, at_bat_number, pitch_number, pitch_type, release_speed</div>
+                </div>
+                <div class="table-doc">
+                    <h4>tbl_games</h4>
+                    <p>Game-level information including teams, dates, and ballpark details</p>
+                    <div class="key-columns">Key columns: game_pk, game_date, home_team, away_team, venue_name</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="explorer-card">
+            <div class="example-queries">
+                <h3>🔍 Example Queries</h3>
                 
-                <div class="example-queries">
-                    <h4>Example Queries</h4>
+                <div class="query-category">
+                    <h4>Basic Data Exploration</h4>
                     
-                    <div class="query-example">
-                        <h5>Basic Data Exploration</h5>
-                        <code>-- View sample at-bats with outcomes
+                    <div class="query-example" onclick="setQuery(`-- View sample at-bats with outcomes
 SELECT game_pk, inning, inning_topbot, final_event, batter, pitcher 
 FROM tbl_atbats 
 WHERE final_event IS NOT NULL 
-LIMIT 15;</code>
+LIMIT 15;`)">
+                        <strong>Sample At-Bats:</strong> View basic at-bat data with outcomes
                     </div>
                     
-                    <div class="query-example">
-                        <h5>Pitch Type Analysis</h5>
-                        <code>-- Most common pitch types
-SELECT pitch_type, COUNT(*) as pitch_count,
-       ROUND(AVG(release_speed), 1) as avg_speed
-FROM tbl_pitchinfo 
-WHERE pitch_type IS NOT NULL
-GROUP BY pitch_type 
-ORDER BY pitch_count DESC;</code>
-                    </div>
-                    
-                    <div class="query-example">
-                        <h5>Count Situations</h5>
-                        <code>-- Pitch outcomes by count
-SELECT balls, strikes, description, COUNT(*) as frequency
-FROM tbl_pitchinfo 
-WHERE description IS NOT NULL
-GROUP BY balls, strikes, description
-ORDER BY balls, strikes, frequency DESC;</code>
-                    </div>
-                    
-                    <div class="query-example">
-                        <h5>At-Bat Outcomes</h5>
-                        <code>-- Most common at-bat results
+                    <div class="query-example" onclick="setQuery(`-- Most common at-bat results
 SELECT final_event, COUNT(*) as occurrences,
        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM tbl_atbats WHERE final_event IS NOT NULL), 2) as percentage
 FROM tbl_atbats 
 WHERE final_event IS NOT NULL
 GROUP BY final_event 
-ORDER BY occurrences DESC;</code>
+ORDER BY occurrences DESC;`)">
+                        <strong>At-Bat Outcomes:</strong> Most common results and their frequencies
+                    </div>
+                </div>
+                
+                <div class="query-category">
+                    <h4>Pitch Analysis</h4>
+                    
+                    <div class="query-example" onclick="setQuery(`-- Most common pitch types
+SELECT pitch_type, COUNT(*) as pitch_count,
+       ROUND(AVG(release_speed), 1) as avg_speed
+FROM tbl_pitchinfo 
+WHERE pitch_type IS NOT NULL
+GROUP BY pitch_type 
+ORDER BY pitch_count DESC;`)">
+                        <strong>Pitch Types:</strong> Analysis of pitch types and velocities
                     </div>
                     
-                    <div class="query-example">
-                        <h5>Join Example: Pitch Sequences Leading to Outcomes</h5>
-                        <code>-- First pitch type for each at-bat outcome
+                    <div class="query-example" onclick="setQuery(`-- Pitch outcomes by count
+SELECT balls, strikes, description, COUNT(*) as frequency
+FROM tbl_pitchinfo 
+WHERE description IS NOT NULL
+GROUP BY balls, strikes, description
+ORDER BY balls, strikes, frequency DESC;`)">
+                        <strong>Count Situations:</strong> Pitch outcomes by ball-strike count
+                    </div>
+                </div>
+                
+                <div class="query-category">
+                    <h4>Advanced Analysis</h4>
+                    
+                    <div class="query-example" onclick="setQuery(`-- First pitch type for each at-bat outcome
 SELECT ab.final_event, p.pitch_type, COUNT(*) as count
 FROM tbl_atbats ab
 JOIN tbl_pitchinfo p ON ab.game_pk = p.game_pk 
@@ -374,7 +471,92 @@ WHERE ab.final_event IS NOT NULL
     AND p.pitch_number = 1
     AND p.pitch_type IS NOT NULL
 GROUP BY ab.final_event, p.pitch_type
-ORDER BY ab.final_event, count DESC;</code>
+ORDER BY ab.final_event, count DESC;`)">
+                        <strong>Join Analysis:</strong> First pitch type leading to different outcomes
+                    </div>
+                    
+                    <div class="query-example" onclick="setQuery(`-- Home runs by month
+SELECT 
+    CASE 
+        WHEN SUBSTR(game_date, 6, 2) = '03' THEN 'March'
+        WHEN SUBSTR(game_date, 6, 2) = '04' THEN 'April'
+        WHEN SUBSTR(game_date, 6, 2) = '05' THEN 'May'
+        WHEN SUBSTR(game_date, 6, 2) = '06' THEN 'June'
+        WHEN SUBSTR(game_date, 6, 2) = '07' THEN 'July'
+        WHEN SUBSTR(game_date, 6, 2) = '08' THEN 'August'
+        WHEN SUBSTR(game_date, 6, 2) = '09' THEN 'September'
+        WHEN SUBSTR(game_date, 6, 2) = '10' THEN 'October'
+        ELSE 'Other'
+    END as month,
+    COUNT(*) as home_runs
+FROM tbl_atbats ab
+JOIN tbl_games g ON ab.game_pk = g.game_pk
+WHERE ab.final_event = 'home_run'
+GROUP BY month
+ORDER BY home_runs DESC;`)">
+                        <strong>Seasonal Trends:</strong> Home runs by month with date parsing
+                    </div>
+                </div>
+                
+                <div class="query-category">
+                    <h4>🔄 Recursive Queries</h4>
+                    
+                    <div class="query-example" onclick="setQuery(`-- Generate a sequence of pitch counts (0-0 to 3-2)
+WITH RECURSIVE pitch_counts AS (
+  -- Base case: start with 0-0 count
+  SELECT 0 as balls, 0 as strikes
+  
+  UNION ALL
+  
+  -- Recursive case: increment balls or strikes
+  SELECT 
+    CASE 
+      WHEN balls < 3 THEN balls + 1 
+      ELSE balls 
+    END as balls,
+    CASE 
+      WHEN strikes < 2 THEN strikes + 1 
+      ELSE strikes 
+    END as strikes
+  FROM pitch_counts
+  WHERE balls < 3 OR strikes < 2
+)
+SELECT DISTINCT balls, strikes, 
+       balls || '-' || strikes as count_display
+FROM pitch_counts
+ORDER BY balls, strikes;`)">
+                        <strong>Count Generation:</strong> Generate all possible ball-strike counts recursively
+                    </div>
+                    
+                    <div class="query-example" onclick="setQuery(`-- Recursive inning progression analysis
+WITH RECURSIVE inning_progression AS (
+  -- Base case: find games and their first inning
+  SELECT DISTINCT game_pk, 1 as inning, 'T' as half_inning
+  FROM tbl_atbats
+  WHERE inning = 1
+  
+  UNION ALL
+  
+  -- Recursive case: progress through innings
+  SELECT 
+    ip.game_pk,
+    CASE 
+      WHEN ip.half_inning = 'T' THEN ip.inning
+      ELSE ip.inning + 1
+    END as inning,
+    CASE 
+      WHEN ip.half_inning = 'T' THEN 'B'
+      ELSE 'T'
+    END as half_inning
+  FROM inning_progression ip
+  WHERE ip.inning < 9
+)
+SELECT game_pk, inning, half_inning,
+       inning || CASE WHEN half_inning = 'T' THEN ' Top' ELSE ' Bottom' END as inning_display
+FROM inning_progression
+WHERE game_pk = (SELECT MIN(game_pk) FROM tbl_atbats)
+ORDER BY inning, half_inning;`)">
+                        <strong>Inning Progression:</strong> Track game progression through innings recursively
                     </div>
                 </div>
             </div>
@@ -383,6 +565,12 @@ ORDER BY ab.final_event, count DESC;</code>
 
     <script>
         let db = null;
+        
+        function setQuery(query) {
+            document.getElementById('query-input').value = query;
+            // Scroll to query input
+            document.getElementById('query-input').scrollIntoView({ behavior: 'smooth' });
+        }
         
         async function initializeDatabase() {
             try {
@@ -428,7 +616,8 @@ ORDER BY ab.final_event, count DESC;</code>
                 const atbatsResult = db.exec("SELECT COUNT(*) as count FROM tbl_atbats");
                 const pitchesResult = db.exec("SELECT COUNT(*) as count FROM tbl_pitchinfo");
                 const gamesResult = db.exec("SELECT COUNT(DISTINCT game_pk) as count FROM tbl_atbats");
-                const playersResult = db.exec("SELECT COUNT(DISTINCT batter) as count FROM tbl_atbats WHERE batter IS NOT NULL");
+                const battersResult = db.exec("SELECT COUNT(DISTINCT batter) as count FROM tbl_atbats WHERE batter IS NOT NULL");
+                const pitchersResult = db.exec("SELECT COUNT(DISTINCT pitcher) as count FROM tbl_atbats WHERE pitcher IS NOT NULL");
                 
                 document.getElementById('atbats-count').textContent = 
                     atbatsResult[0]?.values[0][0].toLocaleString() || '0';
@@ -436,8 +625,10 @@ ORDER BY ab.final_event, count DESC;</code>
                     pitchesResult[0]?.values[0][0].toLocaleString() || '0';
                 document.getElementById('games-count').textContent = 
                     gamesResult[0]?.values[0][0].toLocaleString() || '0';
-                document.getElementById('players-count').textContent = 
-                    playersResult[0]?.values[0][0].toLocaleString() || '0';
+                document.getElementById('batters-count').textContent = 
+                    battersResult[0]?.values[0][0].toLocaleString() || '0';
+                document.getElementById('pitchers-count').textContent = 
+                    pitchersResult[0]?.values[0][0].toLocaleString() || '0';
                     
             } catch (error) {
                 console.error('Error loading stats:', error);
@@ -514,7 +705,7 @@ ORDER BY ab.final_event, count DESC;</code>
             
             // Basic SQL formatting
             query = query.replace(/\s+/g, ' ').trim();
-            query = query.replace(/\b(SELECT|FROM|WHERE|JOIN|GROUP BY|ORDER BY|HAVING|LIMIT)\b/gi, '\n$1');
+            query = query.replace(/\b(SELECT|FROM|WHERE|JOIN|GROUP BY|ORDER BY|HAVING|LIMIT|WITH|UNION|CASE|WHEN|THEN|ELSE|END)\b/gi, '\n$1');
             query = query.replace(/,/g, ',\n    ');
             query = query.replace(/\bAND\b/gi, '\n    AND');
             query = query.replace(/\bOR\b/gi, '\n    OR');
