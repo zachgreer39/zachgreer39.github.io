@@ -396,8 +396,8 @@ ORDER BY ab.final_event, count DESC;</code>
                 
                 statusEl.textContent = 'Loading database file...';
                 
-                // Load the database from Dropbox
-                const response = await fetch('https://www.dropbox.com/scl/fi/frcjp042np45j4zr2ar4o/mlb_data.db?rlkey=q7x92sxmj9vj7psdtr52uy66s&st=rr3qlcli&dl=1');
+                // Load the database from Dropbox via CORS proxy
+                const response = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.dropbox.com/scl/fi/frcjp042np45j4zr2ar4o/mlb_data.db?rlkey=q7x92sxmj9vj7psdtr52uy66s&st=rr3qlcli&dl=1'));
                 if (!response.ok) {
                     throw new Error(`Failed to load database: ${response.status} ${response.statusText}`);
                 }
