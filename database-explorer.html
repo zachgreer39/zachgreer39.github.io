@@ -373,7 +373,6 @@
                     <div class="button-group">
                         <button id="run-query" class="btn btn-primary">Run Query</button>
                         <button id="clear-query" class="btn btn-secondary">Clear</button>
-                        <button id="format-query" class="btn btn-secondary">Format SQL</button>
                     </div>
                 </div>
                 
@@ -409,13 +408,13 @@
                     <h4>Basic Data Exploration</h4>
                     
                     <div class="query-example" onclick="setQuery(`-- View sample at-bats with outcomes
-SELECT game_pk, inning, inning_topbot, final_event, batter, pitcher 
+SELECT game_pk, at_bat_number, inning, inning_topbot, final_event, batter, pitcher 
 FROM tbl_atbats 
 WHERE final_event IS NOT NULL 
 LIMIT 15;`)">
                         <h5>Sample At-Bats</h5>
                         <code>-- View sample at-bats with outcomes
-SELECT game_pk, inning, inning_topbot, final_event, batter, pitcher 
+SELECT game_pk, at_bat_number, inning, inning_topbot, final_event, batter, pitcher 
 FROM tbl_atbats 
 WHERE final_event IS NOT NULL 
 LIMIT 15;</code>
@@ -458,128 +457,141 @@ WHERE pitch_type IS NOT NULL
 GROUP BY pitch_type 
 ORDER BY pitch_count DESC;</code>
                     </div>
-                    
-                    <div class="query-example" onclick="setQuery(`-- Count situation analysis for batter 605141 vs pitcher 608566
-SELECT balls, strikes, description, COUNT(*) as frequency
-FROM tbl_pitchinfo 
-WHERE description IS NOT NULL
-  AND batter = 605141 
-  AND pitcher = 608566
-GROUP BY balls, strikes, description
-ORDER BY balls, strikes, frequency DESC;`)">
-                        <h5>Count Situation Analysis</h5>
-                        <code>-- Count situation analysis for batter 605141 vs pitcher 608566
-SELECT balls, strikes, description, COUNT(*) as frequency
-FROM tbl_pitchinfo 
-WHERE description IS NOT NULL
-  AND batter = 605141 
-  AND pitcher = 608566
-GROUP BY balls, strikes, description
-ORDER BY balls, strikes, frequency DESC;</code>
-                    </div>
                 </div>
                 
                 <div class="query-category">
                     <h4>🔄 Recursive Queries</h4>
                     
-                    <div class="query-example" onclick="setQuery(\`-- Running slash line for batter 605141 vs pitcher 608566
-WITH RECURSIVE matchup_progression AS (
- -- Base case: first confrontation
- SELECT 
-   batter, pitcher, game_pk, at_bat_number,
-   1 as confrontation_num,
-   1 as total_abs,
-   CASE WHEN final_event IN ('single', 'double', 'triple', 'home_run') THEN 1 ELSE 0 END as total_hits,
-   CASE WHEN final_event IN ('single', 'double', 'triple', 'home_run', 'walk', 'hit_by_pitch') THEN 1 ELSE 0 END as total_times_on_base,
-   CASE WHEN final_event = 'single' THEN 1 ELSE 0 END +
-   CASE WHEN final_event = 'double' THEN 2 ELSE 0 END +
-   CASE WHEN final_event = 'triple' THEN 3 ELSE 0 END +
-   CASE WHEN final_event = 'home_run' THEN 4 ELSE 0 END as total_bases,
-   final_event
- FROM tbl_atbats
- WHERE batter = 605141 AND pitcher = 608566
-   AND batter IS NOT NULL AND pitcher IS NOT NULL
- LIMIT 1
- 
- UNION ALL
- 
- -- Recursive case: add each subsequent confrontation
- SELECT 
-   ab.batter, ab.pitcher, ab.game_pk, ab.at_bat_number,
-   mp.confrontation_num + 1,
-   mp.total_abs + 1,
-   mp.total_hits + CASE WHEN ab.final_event IN ('single', 'double', 'triple', 'home_run') THEN 1 ELSE 0 END,
-   mp.total_times_on_base + CASE WHEN ab.final_event IN ('single', 'double', 'triple', 'home_run', 'walk', 'hit_by_pitch') THEN 1 ELSE 0 END,
-   mp.total_bases + 
-     CASE WHEN ab.final_event = 'single' THEN 1 ELSE 0 END +
-     CASE WHEN ab.final_event = 'double' THEN 2 ELSE 0 END +
-     CASE WHEN ab.final_event = 'triple' THEN 3 ELSE 0 END +
-     CASE WHEN ab.final_event = 'home_run' THEN 4 ELSE 0 END,
-   ab.final_event
- FROM tbl_atbats ab
- JOIN matchup_progression mp ON ab.batter = mp.batter AND ab.pitcher = mp.pitcher
- WHERE (ab.game_pk > mp.game_pk OR (ab.game_pk = mp.game_pk AND ab.at_bat_number > mp.at_bat_number))
-   AND mp.confrontation_num < 20
-)
-SELECT 
- batter, pitcher, confrontation_num, final_event,
- total_abs, total_hits, total_times_on_base, total_bases,
- ROUND(CAST(total_hits AS FLOAT) / total_abs, 3) as running_avg,
- ROUND(CAST(total_times_on_base AS FLOAT) / total_abs, 3) as running_obp,
- ROUND(CAST(total_bases AS FLOAT) / total_abs, 3) as running_slg
-FROM matchup_progression
-ORDER BY confrontation_num;\`)">
-                        <h5>Running Slash Line</h5>
-                        <code>-- Running slash line for batter 605141 vs pitcher 608566
-WITH RECURSIVE matchup_progression AS (
-  -- Base case: first confrontation
+                    <div class="query-example" onclick="setQuery(`WITH RECURSIVE matchup_progression AS (
+  -- Base case: first confrontation (earliest chronologically)
   SELECT 
     batter, pitcher, game_pk, at_bat_number,
-    1 as confrontation_num,
+    1 as ab_sequence,
     1 as total_abs,
     CASE WHEN final_event IN ('single', 'double', 'triple', 'home_run') THEN 1 ELSE 0 END as total_hits,
     CASE WHEN final_event IN ('single', 'double', 'triple', 'home_run', 'walk', 'hit_by_pitch') THEN 1 ELSE 0 END as total_times_on_base,
-    CASE WHEN final_event = 'single' THEN 1 ELSE 0 END +
-    CASE WHEN final_event = 'double' THEN 2 ELSE 0 END +
-    CASE WHEN final_event = 'triple' THEN 3 ELSE 0 END +
-    CASE WHEN final_event = 'home_run' THEN 4 ELSE 0 END as total_bases,
+    CASE WHEN final_event = 'single' THEN 1 
+         WHEN final_event = 'double' THEN 2 
+         WHEN final_event = 'triple' THEN 3 
+         WHEN final_event = 'home_run' THEN 4 
+         ELSE 0 END as total_bases,
     final_event
   FROM tbl_atbats
   WHERE batter = 605141 AND pitcher = 608566
     AND batter IS NOT NULL AND pitcher IS NOT NULL
-  ORDER BY game_pk, at_bat_number
-  LIMIT 1
+    AND (game_pk, at_bat_number) = (
+      SELECT game_pk, at_bat_number 
+      FROM tbl_atbats 
+      WHERE batter = 605141 AND pitcher = 608566
+      ORDER BY game_pk, at_bat_number 
+      LIMIT 1
+    )
   
   UNION ALL
   
-  -- Recursive case: add each subsequent confrontation
+  -- Recursive case: find the next chronological at-bat
   SELECT 
     ab.batter, ab.pitcher, ab.game_pk, ab.at_bat_number,
-    mp.confrontation_num + 1,
+    mp.ab_sequence + 1,
     mp.total_abs + 1,
     mp.total_hits + CASE WHEN ab.final_event IN ('single', 'double', 'triple', 'home_run') THEN 1 ELSE 0 END,
     mp.total_times_on_base + CASE WHEN ab.final_event IN ('single', 'double', 'triple', 'home_run', 'walk', 'hit_by_pitch') THEN 1 ELSE 0 END,
-    mp.total_bases + 
-      CASE WHEN ab.final_event = 'single' THEN 1 ELSE 0 END +
-      CASE WHEN ab.final_event = 'double' THEN 2 ELSE 0 END +
-      CASE WHEN ab.final_event = 'triple' THEN 3 ELSE 0 END +
-      CASE WHEN ab.final_event = 'home_run' THEN 4 ELSE 0 END,
+    mp.total_bases + CASE WHEN ab.final_event = 'single' THEN 1 
+                          WHEN ab.final_event = 'double' THEN 2 
+                          WHEN ab.final_event = 'triple' THEN 3 
+                          WHEN ab.final_event = 'home_run' THEN 4 
+                          ELSE 0 END,
     ab.final_event
   FROM tbl_atbats ab
   JOIN matchup_progression mp ON ab.batter = mp.batter AND ab.pitcher = mp.pitcher
-  WHERE (ab.game_pk > mp.game_pk OR (ab.game_pk = mp.game_pk AND ab.at_bat_number > mp.at_bat_number))
-    AND mp.confrontation_num < 20
-  ORDER BY ab.game_pk, ab.at_bat_number
-  LIMIT 1
+  WHERE ab.batter = 605141 AND ab.pitcher = 608566
+    AND (ab.game_pk > mp.game_pk OR (ab.game_pk = mp.game_pk AND ab.at_bat_number > mp.at_bat_number))
+    AND (ab.game_pk, ab.at_bat_number) = (
+      SELECT game_pk, at_bat_number 
+      FROM tbl_atbats ab2
+      WHERE ab2.batter = 605141 AND ab2.pitcher = 608566
+        AND (ab2.game_pk > mp.game_pk OR (ab2.game_pk = mp.game_pk AND ab2.at_bat_number > mp.at_bat_number))
+      ORDER BY ab2.game_pk, ab2.at_bat_number
+      LIMIT 1
+    )
+    AND mp.ab_sequence < 50
 )
 SELECT 
-  batter, pitcher, confrontation_num, final_event,
-  total_abs, total_hits, total_times_on_base, total_bases,
-  ROUND(CAST(total_hits AS FLOAT) / total_abs, 3) as running_avg,
+  ab_sequence, 
+  game_pk, 
+  final_event,
+  ROUND(CAST(total_hits AS FLOAT) / total_abs, 3) as running_ba,
   ROUND(CAST(total_times_on_base AS FLOAT) / total_abs, 3) as running_obp,
-  ROUND(CAST(total_bases AS FLOAT) / total_abs, 3) as running_slg
+  ROUND(CAST(total_bases AS FLOAT) / total_abs, 3) as running_slg,
+  ROUND(CAST(total_times_on_base AS FLOAT) / total_abs + CAST(total_bases AS FLOAT) / total_abs, 3) as running_ops
 FROM matchup_progression
-ORDER BY confrontation_num;</code>
+ORDER BY ab_sequence;`)">
+                        <h5>Running Slash Line</h5>
+                        <code>-- Running slash line for batter 605141 vs pitcher 608566
+WITH RECURSIVE matchup_progression AS (
+  -- Base case: first confrontation (earliest chronologically)
+  SELECT 
+    batter, pitcher, game_pk, at_bat_number,
+    1 as ab_sequence,
+    1 as total_abs,
+    CASE WHEN final_event IN ('single', 'double', 'triple', 'home_run') THEN 1 ELSE 0 END as total_hits,
+    CASE WHEN final_event IN ('single', 'double', 'triple', 'home_run', 'walk', 'hit_by_pitch') THEN 1 ELSE 0 END as total_times_on_base,
+    CASE WHEN final_event = 'single' THEN 1 
+         WHEN final_event = 'double' THEN 2 
+         WHEN final_event = 'triple' THEN 3 
+         WHEN final_event = 'home_run' THEN 4 
+         ELSE 0 END as total_bases,
+    final_event
+  FROM tbl_atbats
+  WHERE batter = 605141 AND pitcher = 608566
+    AND batter IS NOT NULL AND pitcher IS NOT NULL
+    AND (game_pk, at_bat_number) = (
+      SELECT game_pk, at_bat_number 
+      FROM tbl_atbats 
+      WHERE batter = 605141 AND pitcher = 608566
+      ORDER BY game_pk, at_bat_number 
+      LIMIT 1
+    )
+  
+  UNION ALL
+  
+  -- Recursive case: find the next chronological at-bat
+  SELECT 
+    ab.batter, ab.pitcher, ab.game_pk, ab.at_bat_number,
+    mp.ab_sequence + 1,
+    mp.total_abs + 1,
+    mp.total_hits + CASE WHEN ab.final_event IN ('single', 'double', 'triple', 'home_run') THEN 1 ELSE 0 END,
+    mp.total_times_on_base + CASE WHEN ab.final_event IN ('single', 'double', 'triple', 'home_run', 'walk', 'hit_by_pitch') THEN 1 ELSE 0 END,
+    mp.total_bases + CASE WHEN ab.final_event = 'single' THEN 1 
+                          WHEN ab.final_event = 'double' THEN 2 
+                          WHEN ab.final_event = 'triple' THEN 3 
+                          WHEN ab.final_event = 'home_run' THEN 4 
+                          ELSE 0 END,
+    ab.final_event
+  FROM tbl_atbats ab
+  JOIN matchup_progression mp ON ab.batter = mp.batter AND ab.pitcher = mp.pitcher
+  WHERE ab.batter = 605141 AND ab.pitcher = 608566
+    AND (ab.game_pk > mp.game_pk OR (ab.game_pk = mp.game_pk AND ab.at_bat_number > mp.at_bat_number))
+    AND (ab.game_pk, ab.at_bat_number) = (
+      SELECT game_pk, at_bat_number 
+      FROM tbl_atbats ab2
+      WHERE ab2.batter = 605141 AND ab2.pitcher = 608566
+        AND (ab2.game_pk > mp.game_pk OR (ab2.game_pk = mp.game_pk AND ab2.at_bat_number > mp.at_bat_number))
+      ORDER BY ab2.game_pk, ab2.at_bat_number
+      LIMIT 1
+    )
+    AND mp.ab_sequence < 50
+)
+SELECT 
+  ab_sequence, 
+  game_pk, 
+  final_event,
+  ROUND(CAST(total_hits AS FLOAT) / total_abs, 3) as running_ba,
+  ROUND(CAST(total_times_on_base AS FLOAT) / total_abs, 3) as running_obp,
+  ROUND(CAST(total_bases AS FLOAT) / total_abs, 3) as running_slg,
+  ROUND(CAST(total_times_on_base AS FLOAT) / total_abs + CAST(total_bases AS FLOAT) / total_abs, 3) as running_ops
+FROM matchup_progression
+ORDER BY ab_sequence;</code>
                     </div>
                 </div>
             </div>
@@ -719,27 +731,12 @@ ORDER BY confrontation_num;</code>
             document.getElementById('results-section').classList.add('hidden');
         }
         
-        function formatQuery() {
-            const input = document.getElementById('query-input');
-            let query = input.value;
-            
-            // Basic SQL formatting
-            query = query.replace(/\s+/g, ' ').trim();
-            query = query.replace(/\b(SELECT|FROM|WHERE|JOIN|GROUP BY|ORDER BY|HAVING|LIMIT|WITH|UNION|CASE|WHEN|THEN|ELSE|END)\b/gi, '\n$1');
-            query = query.replace(/,/g, ',\n    ');
-            query = query.replace(/\bAND\b/gi, '\n    AND');
-            query = query.replace(/\bOR\b/gi, '\n    OR');
-            
-            input.value = query;
-        }
-        
         // Event listeners
         document.addEventListener('DOMContentLoaded', () => {
             initializeDatabase();
             
             document.getElementById('run-query').addEventListener('click', runQuery);
             document.getElementById('clear-query').addEventListener('click', clearQuery);
-            document.getElementById('format-query').addEventListener('click', formatQuery);
             
             // Allow Ctrl+Enter to run query
             document.getElementById('query-input').addEventListener('keydown', (e) => {
