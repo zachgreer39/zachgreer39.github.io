@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLB Database Explorer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .explorer-card {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 2rem;
+        }
+        
+        .status {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .status.loading {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .query-section {
+            margin-bottom: 2rem;
+        }
+        
+        .query-section h3 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .query-input {
+            width: 100%;
+            min-height: 120px;
+            padding: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+        
+        .query-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            margin: 1rem 0;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+        
+        .results-section {
+            margin-top: 2rem;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        th, td {
+            padding: 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+        
+        .example-queries {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+        
+        .example-queries h4 {
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        
+        .query-example {
+            background: white;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #667eea;
+        }
+        
+        .query-example h5 {
+            margin-bottom: 0.5rem;
+            color: #667eea;
+        }
+        
+        .query-example code {
+            background: #f1f3f4;
+            padding: 0.8rem;
+            border-radius: 4px;
+            display: block;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        
+        .database-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .info-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .info-card h4 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+        
+        .info-card p {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚾ MLB Database Explorer</h1>
+            <p>Interactive SQL queries on MLB Statcast data (2021-2024)</p>
+        </div>
+        
+        <div class="explorer-card">
+            <div id="status" class="status loading">
+                Loading database... Please wait
+            </div>
+            
+            <div id="database-info" class="database-info hidden">
+                <div class="info-card">
+                    <h4>At Bats</h4>
+                    <p id="atbats-count">-</p>
+                </div>
+                <div class="info-card">
+                    <h4>Pitches</h4>
+                    <p id="pitches-count">-</p>
+                </div>
+                <div class="info-card">
+                    <h4>Games</h4>
+                    <p id="games-count">-</p>
+                </div>
+                <div class="info-card">
+                    <h4>Players</h4>
+                    <p id="players-count">-</p>
+                </div>
+            </div>
+            
+            <div id="query-interface" class="hidden">
+                <div class="query-section">
+                    <h3>SQL Query</h3>
+                    <textarea 
+                        id="query-input" 
+                        class="query-input" 
+                        placeholder="Enter your SQL query here...">SELECT * FROM tbl_atbats LIMIT 10;</textarea>
+                    
+                    <div class="button-group">
+                        <button id="run-query" class="btn btn-primary">Run Query</button>
+                        <button id="clear-query" class="btn btn-secondary">Clear</button>
+                        <button id="format-query" class="btn btn-secondary">Format SQL</button>
+                    </div>
+                </div>
+                
+                <div id="results-section" class="results-section hidden">
+                    <h3>Query Results</h3>
+                    <div id="results-container"></div>
+                </div>
+                
+                <div class="example-queries">
+                    <h4>Example Queries</h4>
+                    
+                    <div class="query-example">
+                        <h5>Basic Data Exploration</h5>
+                        <code>-- View sample at-bats with outcomes
+SELECT game_pk, inning, inning_topbot, final_event, batter, pitcher 
+FROM tbl_atbats 
+WHERE final_event IS NOT NULL 
+LIMIT 15;</code>
+                    </div>
+                    
+                    <div class="query-example">
+                        <h5>Pitch Type Analysis</h5>
+                        <code>-- Most common pitch types
+SELECT pitch_type, COUNT(*) as pitch_count,
+       ROUND(AVG(release_speed), 1) as avg_speed
+FROM tbl_pitchinfo 
+WHERE pitch_type IS NOT NULL
+GROUP BY pitch_type 
+ORDER BY pitch_count DESC;</code>
+                    </div>
+                    
+                    <div class="query-example">
+                        <h5>Count Situations</h5>
+                        <code>-- Pitch outcomes by count
+SELECT balls, strikes, description, COUNT(*) as frequency
+FROM tbl_pitchinfo 
+WHERE description IS NOT NULL
+GROUP BY balls, strikes, description
+ORDER BY balls, strikes, frequency DESC;</code>
+                    </div>
+                    
+                    <div class="query-example">
+                        <h5>At-Bat Outcomes</h5>
+                        <code>-- Most common at-bat results
+SELECT final_event, COUNT(*) as occurrences,
+       ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM tbl_atbats WHERE final_event IS NOT NULL), 2) as percentage
+FROM tbl_atbats 
+WHERE final_event IS NOT NULL
+GROUP BY final_event 
+ORDER BY occurrences DESC;</code>
+                    </div>
+                    
+                    <div class="query-example">
+                        <h5>Join Example: Pitch Sequences Leading to Outcomes</h5>
+                        <code>-- First pitch type for each at-bat outcome
+SELECT ab.final_event, p.pitch_type, COUNT(*) as count
+FROM tbl_atbats ab
+JOIN tbl_pitchinfo p ON ab.game_pk = p.game_pk 
+    AND ab.at_bat_number = p.at_bat_number
+WHERE ab.final_event IS NOT NULL 
+    AND p.pitch_number = 1
+    AND p.pitch_type IS NOT NULL
+GROUP BY ab.final_event, p.pitch_type
+ORDER BY ab.final_event, count DESC;</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let db = null;
+        
+        async function initializeDatabase() {
+            try {
+                const statusEl = document.getElementById('status');
+                statusEl.textContent = 'Loading SQL.js library...';
+                
+                // Initialize SQL.js
+                const SQL = await initSqlJs({
+                    locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+                });
+                
+                statusEl.textContent = 'Loading database file...';
+                
+                // Load the database from Google Drive
+                const response = await fetch('https://drive.google.com/uc?export=download&id=1xwQVsJXu8EGsjYMYRxgtipWou0oxXn7w');
+                if (!response.ok) {
+                    throw new Error(`Failed to load database: ${response.status} ${response.statusText}`);
+                }
+                
+                const buffer = await response.arrayBuffer();
+                db = new SQL.Database(new Uint8Array(buffer));
+                
+                statusEl.className = 'status success';
+                statusEl.textContent = 'Database loaded successfully!';
+                
+                // Load database statistics
+                await loadDatabaseStats();
+                
+                // Show the interface
+                document.getElementById('database-info').classList.remove('hidden');
+                document.getElementById('query-interface').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Database loading error:', error);
+                const statusEl = document.getElementById('status');
+                statusEl.className = 'status error';
+                statusEl.textContent = `Error loading database: ${error.message}`;
+            }
+        }
+        
+        async function loadDatabaseStats() {
+            try {
+                const atbatsResult = db.exec("SELECT COUNT(*) as count FROM tbl_atbats");
+                const pitchesResult = db.exec("SELECT COUNT(*) as count FROM tbl_pitchinfo");
+                const gamesResult = db.exec("SELECT COUNT(DISTINCT game_pk) as count FROM tbl_atbats");
+                const playersResult = db.exec("SELECT COUNT(DISTINCT batter) as count FROM tbl_atbats WHERE batter IS NOT NULL");
+                
+                document.getElementById('atbats-count').textContent = 
+                    atbatsResult[0]?.values[0][0].toLocaleString() || '0';
+                document.getElementById('pitches-count').textContent = 
+                    pitchesResult[0]?.values[0][0].toLocaleString() || '0';
+                document.getElementById('games-count').textContent = 
+                    gamesResult[0]?.values[0][0].toLocaleString() || '0';
+                document.getElementById('players-count').textContent = 
+                    playersResult[0]?.values[0][0].toLocaleString() || '0';
+                    
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+        
+        function runQuery() {
+            const query = document.getElementById('query-input').value.trim();
+            if (!query) return;
+            
+            const resultsSection = document.getElementById('results-section');
+            const resultsContainer = document.getElementById('results-container');
+            
+            try {
+                const results = db.exec(query);
+                
+                if (results.length === 0) {
+                    resultsContainer.innerHTML = '<p>Query executed successfully. No results returned.</p>';
+                } else {
+                    let html = '';
+                    results.forEach((result, index) => {
+                        if (results.length > 1) {
+                            html += `<h4>Result Set ${index + 1}</h4>`;
+                        }
+                        html += createTable(result);
+                    });
+                    resultsContainer.innerHTML = html;
+                }
+                
+                resultsSection.classList.remove('hidden');
+                
+            } catch (error) {
+                resultsContainer.innerHTML = `<div class="status error">Error: ${error.message}</div>`;
+                resultsSection.classList.remove('hidden');
+            }
+        }
+        
+        function createTable(result) {
+            if (!result.columns || !result.values) return '<p>No data</p>';
+            
+            let html = '<div class="table-container"><table>';
+            
+            // Header
+            html += '<thead><tr>';
+            result.columns.forEach(col => {
+                html += `<th>${col}</th>`;
+            });
+            html += '</tr></thead>';
+            
+            // Body
+            html += '<tbody>';
+            result.values.forEach(row => {
+                html += '<tr>';
+                row.forEach(cell => {
+                    html += `<td>${cell !== null ? cell : 'NULL'}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            
+            html += `<p><strong>Rows returned:</strong> ${result.values.length}</p>`;
+            
+            return html;
+        }
+        
+        function clearQuery() {
+            document.getElementById('query-input').value = '';
+            document.getElementById('results-section').classList.add('hidden');
+        }
+        
+        function formatQuery() {
+            const input = document.getElementById('query-input');
+            let query = input.value;
+            
+            // Basic SQL formatting
+            query = query.replace(/\s+/g, ' ').trim();
+            query = query.replace(/\b(SELECT|FROM|WHERE|JOIN|GROUP BY|ORDER BY|HAVING|LIMIT)\b/gi, '\n$1');
+            query = query.replace(/,/g, ',\n    ');
+            query = query.replace(/\bAND\b/gi, '\n    AND');
+            query = query.replace(/\bOR\b/gi, '\n    OR');
+            
+            input.value = query;
+        }
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeDatabase();
+            
+            document.getElementById('run-query').addEventListener('click', runQuery);
+            document.getElementById('clear-query').addEventListener('click', clearQuery);
+            document.getElementById('format-query').addEventListener('click', formatQuery);
+            
+            // Allow Ctrl+Enter to run query
+            document.getElementById('query-input').addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    runQuery();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
