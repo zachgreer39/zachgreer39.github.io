@@ -207,6 +207,23 @@
             color: #667eea;
         }
 
+        /* Photo Carousel */
+        .photo-carousel {
+            height: 400px;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .photo-carousel img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 15px;
+            transition: opacity 1s ease-in-out;
+        }
+
         /* About Section */
         .about {
             background: #f8f9fa;
@@ -344,14 +361,36 @@
                 </div>
 
                 <div class="project-card">
+                    <h3>What Makes a Good Start a Great Start? (2021)</h3>
+                    <p>Advanced clustering analysis identifying "Gold Standard" starts in MLB. Used multi-stage k-means clustering to discover elite pitcher performance patterns before they're complete.</p>
+                    <a href="https://www.dropbox.com/scl/fi/des1u74tr8dyxzrieftnt/Defining-Great-Starts.pdf?rlkey=6n09rm65z5724mhon12pb1vi8&st=wjh6um9a&dl=0" target="_blank" class="project-link">View Research Paper →</a>
+                    <div class="tech-stack">
+                        <span class="tech-tag">R</span>
+                        <span class="tech-tag">Tableau</span>
+                        <span class="tech-tag">K-Means Clustering</span>
+                        <span class="tech-tag">AWS Database</span>
+                        <span class="tech-tag">Statistical Modeling</span>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <h3>Geospatial Trade Area Analysis</h3>
+                    <p>Interactive R Shiny application for retail trade area analysis. Generates sales data based on store locations and block group proximity, then creates interactive maps allowing users to define custom trade areas and export shapefiles and CSV mappings.</p>
+                    <a href="RandomlyGeneratedSalesData.txt" target="_blank" class="project-link">View Sales Generation Script →</a>
+                    <a href="#" class="project-link" style="margin-left: 0.5rem;">App Coming Soon</a>
+                    <div class="tech-stack">
+                        <span class="tech-tag">R</span>
+                        <span class="tech-tag">Shiny</span>
+                        <span class="tech-tag">sf</span>
+                        <span class="tech-tag">Leaflet</span>
+                        <span class="tech-tag">GIS</span>
+                    </div>
+                </div>
+
+                <div class="project-card">
                     <h3>Stolen Base Success Analysis</h3>
                     <p>Deep dive into stolen base success factors using advanced statistical modeling. Analyzes game situation, pitcher timing, and catcher effectiveness.</p>
                     <a href="#" class="project-link">Coming Soon</a>
-                    <div class="tech-stack">
-                        <span class="tech-tag">R</span>
-                        <span class="tech-tag">Statistical Modeling</span>
-                        <span class="tech-tag">Logistic Regression</span>
-                    </div>
                 </div>
 
             </div>
@@ -364,15 +403,15 @@
                 <div class="about-text">
                     <h2>About Me</h2>
                     <p>My love for analytics started with the Tampa Bay Rays. Growing up watching them build from absolutely nothing into a competitive team, I got hooked on how smart use of data could turn disadvantages into strengths. Those late 2000s Rays teams showed me that with the right approach, you could compete with anyone.</p>
-                    <p>I've spent my career in the grocery industry working as a Fraud Analyst, Pricing Analyst, and Senior Real Estate Analyst. Each role taught me something different about finding patterns in data and turning insights into real business decisions. The grocery world might not seem glamorous, but there's a lot of interesting problems to solve when you dig into the numbers.</p>
-                    <p>Baseball analytics is still a huge passion of mine. I'm always building models or diving into Statcast data, usually trying to figure out why some obscure Rays roster move is actually brilliant. There's something satisfying about finding the story hiding in the stats.</p>
-                    <p>I try to stay active, though "try" is the key word here. I played lacrosse in college and still run when I can motivate myself to get out the door. Some days are more successful than others.</p>
-                    <p>At home, I'm completely owned by two cats. Nugget is my older girl who rules the house with an iron paw (hence her nickname "the Queen"). Maple is the new kitten we call Baby, and she's currently in her "knock everything off every surface" phase. They're both experts at interrupting meetings and reminding me that no amount of data analysis can predict when they'll decide to be chaotic.</p>
+                    <p>I've spent my career in the grocery industry working as a Fraud Analyst, Pricing Analyst, and Senior Real Estate Analyst. Each role taught me something different about finding patterns in data and turning insights into real business decisions.</p>
+                    <p>I'm pretty avid in OOTP online leagues, consistently turning around struggling teams into playoff contenders. When I couldn't make my high school's baseball team, I joined the newly formed lacrosse team as a goalie, eventually playing three years as a defender at the University of South Florida. I still try to stay active with running, and at home I'm completely owned by my two cats, Nugget and Maple.</p>
                 </div>
                 <div class="about-image">
-                    <!-- You can add a professional photo here -->
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 400px; border-radius: 15px; display: flex; align-items: center; justify-content: center; color: white; font-size: 4rem;">
-                        📊
+                    <div class="photo-carousel">
+                        <img id="carousel-image" src="photo1.jpg" alt="Zach Greer" style="display: none;" />
+                        <div id="photo-fallback" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 400px; border-radius: 15px; display: flex; align-items: center; justify-content: center; color: white; font-size: 4rem;">
+                            📊
+                        </div>
                     </div>
                 </div>
             </div>
@@ -411,6 +450,55 @@
                 header.style.background = 'rgba(255, 255, 255, 0.95)';
             }
         });
+
+        // Photo carousel functionality
+        const photos = ['photo1.jpg', 'photo2.jpg', 'photo3.jpg', 'photo4.jpg', 'photo5.jpg'];
+        let currentPhotoIndex = 0;
+        let availablePhotos = [];
+        const carouselImage = document.getElementById('carousel-image');
+        const photoFallback = document.getElementById('photo-fallback');
+
+        // Test which photos actually exist
+        function testPhoto(photoSrc) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve(true);
+                img.onerror = () => resolve(false);
+                img.src = photoSrc;
+            });
+        }
+
+        async function initializeCarousel() {
+            // Test all photos
+            for (const photo of photos) {
+                const exists = await testPhoto(photo);
+                if (exists) {
+                    availablePhotos.push(photo);
+                }
+            }
+
+            if (availablePhotos.length > 0) {
+                // Hide fallback and show carousel
+                photoFallback.style.display = 'none';
+                carouselImage.style.display = 'block';
+                carouselImage.src = availablePhotos[0];
+                
+                // Only start carousel if we have multiple photos
+                if (availablePhotos.length > 1) {
+                    setInterval(changePhoto, 4000);
+                }
+            }
+            // If no photos exist, keep the fallback visible
+        }
+
+        function changePhoto() {
+            if (availablePhotos.length <= 1) return;
+            currentPhotoIndex = (currentPhotoIndex + 1) % availablePhotos.length;
+            carouselImage.src = availablePhotos[currentPhotoIndex];
+        }
+
+        // Initialize when page loads
+        initializeCarousel();
     </script>
 </body>
 </html>
