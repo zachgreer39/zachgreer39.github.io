@@ -1,0 +1,227 @@
+library(tidyverse);
+library(sf);
+library(tigris);
+
+shp_blockgroups=block_groups(state="FL", year=2020)
+
+shp_blockgroups %>%
+  transmute(
+    stateID=STATEFP,
+    countyID=COUNTYFP,
+    tractID=TRACTCE,
+    bgID=BLKGRPCE,
+    geoID=GEOID,
+    lat=as.numeric(gsub("\\+", "", INTPTLAT)),
+    lng=as.numeric(INTPTLON),
+    geometry=geometry
+  ) %>%
+  write_sf("Shiny/Trade Areas App/fl_blockgroups.shp")
+
+rm(shp_blockgroups);
+
+shp_blockgroups=read_sf("Shiny/Trade Areas App/fl_blockgroups.shp") %>%
+  st_transform(4326)
+df_stores=read_csv("Shiny/Trade Areas App/store_info.csv")
+
+calculate_store_distances=function(){
+  
+  stores_sf=st_as_sf(df_stores, coords=c("lng", "lat"), crs=4326)
+  bg_centroids=st_centroid(shp_blockgroups)
+  
+  distance_matrices=list()
+  
+  for (i in 1:nrow(stores_sf)) {
+    
+    store_point=stores_sf[i,]
+    distances=st_distance(store_point, bg_centroids)
+    distances_miles=as.numeric(distances)/1609.34
+    
+    distance_matrices[[i]]=tibble(
+      storeID=store_point$storeID, 
+      geoID=shp_blockgroups$geoID, 
+      distance_miles=distances_miles
+    )
+    
+  }
+  
+  all_distances=bind_rows(distance_matrices)
+  return(all_distances)
+  
+}
+
+
+generate_sales=function(distances, df_stores) {
+  
+  primary_threshold=3
+  secondary_threshold=5
+  tertiary_threshold=10
+  
+  primary_pct=0.65
+  secondary_pct=0.20
+  tertiary_pct=0.10
+  outer_pct=0.05
+  
+  all_sales=tibble()
+  
+  for (store_row in 1:nrow(df_stores)) {
+    
+    store=df_stores$storeID[store_row]
+    
+    total_sales=df_stores$total_sales[store_row]
+    
+    store_distances=distances %>%
+      filter(storeID==store)
+    
+    if(store==1182){
+      primary_threshold=2
+      secondary_threshold=4 
+      tertiary_threshold=8 
+      primary_pct=0.70
+      secondary_pct=0.18
+      tertiary_pct=0.08
+      outer_pct=0.04
+    }
+    
+    primary_bg=store_distances %>%
+      filter(distance_miles<=primary_threshold) %>%
+      arrange(distance_miles)
+    secondary_bg=store_distances %>%
+      filter(distance_miles>primary_threshold, distance_miles<=secondary_threshold) %>%
+      arrange(distance_miles)
+    tertiary_bg=store_distances %>% 
+      filter(distance_miles>secondary_threshold, distance_miles<=tertiary_threshold) %>%
+      arrange(distance_miles)
+    outer_bg=store_distances %>%
+      filter(distance_miles>tertiary_threshold) %>%
+      arrange(distance_miles)
+    
+    primary_sales=total_sales*primary_pct
+    secondary_sales=total_sales*secondary_pct
+    tertiary_sales=total_sales*tertiary_pct
+    outer_sales=total_sales*outer_pct
+    
+    if (nrow(primary_bg)>0) {
+      
+      primary_bg=primary_bg %>%
+        mutate(weight=exp(-distance_miles*2), 
+               weight=ifelse(row_number()<=5, weight*(8-row_number()), weight), 
+               weight=weight*runif(n(), 0.9, 1.1))
+      
+      weight_sum=sum(primary_bg$weight)
+      primary_bg=primary_bg %>%
+        mutate(weight=weight/weight_sum, 
+               sales=weight*primary_sales)
+      
+      if (nrow(primary_bg)>=5) {
+        
+        top_5_pct=sum(primary_bg$sales[1:5])/primary_sales
+        
+        if(top_5_pct<0.65){
+          
+          scaling_factor=0.65/top_5_pct
+          remainder_factor=(1-0.65)/(1-top_5_pct)
+          
+          primary_bg$sales[1:5]=primary_bg$sales[1:5]*scaling_factor
+          
+          if(nrow(primary_bg)>5){
+            
+            primary_bg$sales[6:nrow(primary_bg)]=primary_bg$sales[6:nrow(primary_bg)]*remainder_factor
+            
+          }
+          
+        }
+        
+      }
+      
+    }
+    
+    if(nrow(secondary_bg)>0){
+      
+      max_secondary_bgs=min(nrow(secondary_bg), 20)
+      
+      secondary_bg=secondary_bg %>%
+        mutate(weight=exp(-(distance_miles-primary_threshold)*1.8), 
+               weight=weight*runif(n(), 0.85, 1.15))
+      
+      if(nrow(secondary_bg)>max_secondary_bgs){
+        
+        secondary_bg=secondary_bg %>%
+          arrange(desc(weight)) %>%
+          slice_head(n=max_secondary_bgs)
+        
+      }
+      
+      weight_sum=sum(secondary_bg$weight)
+      secondary_bg=secondary_bg %>%
+        mutate(weight=weight/weight_sum, 
+               sales=weight*secondary_sales)
+    }
+
+    if(nrow(tertiary_bg)>0) {
+      
+      max_tertiary_bgs=min(nrow(tertiary_bg), 20)
+      
+      tertiary_bg=tertiary_bg %>%
+        mutate(weight=exp(-(distance_miles-secondary_threshold)*1.5), 
+               weight=weight*runif(n(), 0.8, 1.2))
+      
+      if(nrow(tertiary_bg)>max_tertiary_bgs){
+        tertiary_bg=tertiary_bg %>%
+          arrange(desc(weight)) %>%
+          slice_head(n=max_tertiary_bgs)
+      }
+      
+      weight_sum=sum(tertiary_bg$weight)
+      tertiary_bg=tertiary_bg %>%
+        mutate(weight=weight/weight_sum, 
+               sales=weight*tertiary_sales)
+      
+    }
+    
+    if(nrow(outer_bg)>0){
+      
+      max_outer_bgs=min(nrow(outer_bg), 15)
+      
+      set.seed(as.numeric(store))
+      
+      keep_indices=sample(1:nrow(outer_bg), size=max_outer_bgs)
+      
+      outer_bg=outer_bg %>%
+        mutate(weight=1/(distance_miles-tertiary_threshold+3), 
+               weight=ifelse(row_number() %in% keep_indices, weight, 0), 
+               weight=weight*runif(n(), 0.7, 1.3))
+      
+      weight_sum=sum(outer_bg$weight)
+      if(weight_sum>0){
+        outer_bg=outer_bg %>%
+          mutate(weight=weight/weight_sum, 
+                 sales=weight*outer_sales)
+      } else {
+        outer_bg=outer_bg %>%
+          mutate(sales=0)
+      }
+    }
+    
+    store_sales=bind_rows(primary_bg, secondary_bg, tertiary_bg, outer_bg)
+    
+    store_sales=store_sales %>%
+      filter(sales > 200) %>%
+      select(storeID, geoID, sales)
+    
+    all_sales=bind_rows(all_sales, store_sales)
+    
+  }
+  
+  return(all_sales)
+  
+}
+
+distances=calculate_store_distances()
+
+sales_data=generate_sales(distances, df_stores)
+
+sales_data=sales_data %>%
+  mutate(sales=round(sales, 2))
+
+
+write_csv(sales_data, "Shiny/Trade Areas App/sales_data.csv")
