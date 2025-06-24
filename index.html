@@ -183,6 +183,19 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
+        .button-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .button-group .project-link {
+            flex: 1;
+            text-align: center;
+            min-width: 140px;
+        }
+
         .tech-stack {
             display: flex;
             flex-wrap: wrap;
@@ -332,6 +345,7 @@
             <ul class="nav-links">
                 <li><a href="#projects">Projects</a></li>
                 <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
             </ul>
         </nav>
     </header>
@@ -362,7 +376,7 @@
 
                 <div class="project-card">
                     <h3>What Makes a Good Start a Great Start? (2021)</h3>
-                    <p>Advanced clustering analysis identifying "Gold Standard" starts in MLB. Used multi-stage k-means clustering to discover elite pitcher performance patterns before they're complete.</p>
+                    <p>Advanced clustering analysis identifying "Gold Standard" starts in MLB. Used multi-stage k-means clustering to discover elite pitcher performance patterns and early-game indicators that predict success through 27+ batters.</p>
                     <a href="https://www.dropbox.com/scl/fi/des1u74tr8dyxzrieftnt/Defining-Great-Starts.pdf?rlkey=6n09rm65z5724mhon12pb1vi8&st=wjh6um9a&dl=0" target="_blank" class="project-link">View Research Paper →</a>
                     <div class="tech-stack">
                         <span class="tech-tag">R</span>
@@ -376,8 +390,10 @@
                 <div class="project-card">
                     <h3>Geospatial Trade Area Analysis</h3>
                     <p>Interactive R Shiny application for retail trade area analysis. Generates sales data based on store locations and block group proximity, then creates interactive maps allowing users to define custom trade areas and export shapefiles and CSV mappings.</p>
-                    <a href="RandomlyGeneratedSalesData.txt" target="_blank" class="project-link">View Sales Generation Script →</a>
-                    <a href="#" class="project-link" style="margin-left: 0.5rem;">App Coming Soon</a>
+                    <div class="button-group">
+                        <a href="RandomlyGeneratedSalesData.txt" target="_blank" class="project-link">View Sales Script →</a>
+                        <a href="#" class="project-link">App Coming Soon</a>
+                    </div>
                     <div class="tech-stack">
                         <span class="tech-tag">R</span>
                         <span class="tech-tag">Shiny</span>
